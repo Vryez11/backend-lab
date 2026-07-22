@@ -6,12 +6,10 @@ import org.springframework.stereotype.Service;
 public class OrderPriceService {
 
     private static final int DISCOUNT_PERCENT = 10;
-    private long lastAmount;
 
-    public synchronized OrderResponse order(String userId, long amount) {
-        this.lastAmount = amount;
+    public OrderResponse order(String userId, long amount) {
         busyWait();
-        long finalPrice = this.lastAmount - (this.lastAmount * DISCOUNT_PERCENT / 100);
+        long finalPrice = amount - (amount * DISCOUNT_PERCENT / 100);
         return new OrderResponse(userId, finalPrice);
     }
 
