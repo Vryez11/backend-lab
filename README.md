@@ -40,6 +40,7 @@ docs/
 |---|---|---|---|---|
 | lab01 | 싱글톤 빈의 공유 상태로 인한 동시성 버그 | 디버깅 | 스프링 핵심원리 | [docs](docs/lab01-싱글톤-공유상태-버그.md) |
 | lab02 | 필드 주입 탓에 순수 단위 테스트에서 죽는 서비스 | 디버깅 | 스프링 핵심원리 | [docs](docs/lab02-단위테스트-NPE.md) |
+| lab03 | 동영상 검색·등록 API — 요청 파라미터 바인딩과 JSON 응답 | TDD | 스프링 MVC | [docs](docs/lab03-요청파라미터-바인딩-TDD.md) |
 
 ### lab01 — 싱글톤 빈의 공유 상태로 인한 동시성 버그
 
@@ -65,3 +66,19 @@ docs/
 3. 단위 테스트에서 실제 구현체(`RateDiscountPolicy`, `MemoryOrderRepository`)를 직접 생성해 주입 → 스프링 없이 통과
 
 **배움**: 생성자 주입은 주입 누락을 런타임 NPE가 아니라 **컴파일 오류**로 앞당긴다 — "가장 빠른 오류가 가장 좋은 오류". `final`은 생성 후 재할당을 원천 차단해 불변을 보장한다. 롬복은 생성자 주입을 택하는 *이유*(불변·누락 방지·테스트 용이)가 아니라 보일러플레이트를 줄이는 *편의*일 뿐이다.
+
+### lab03 — 동영상 검색·등록 API: 요청 파라미터 바인딩과 JSON 응답 (TDD)
+
+**과제**: 실패하는 인수 테스트 8개와 미구현 컨트롤러 스텁을 받고, 테스트를 고치지 않은 채 프로덕션 코드만 채워 전부 green으로 만든다. `GET /api/videos`는 쿼리 파라미터(`keyword` 필수·누락 시 400, `limit` 기본 10)로 검색하고, `POST /api/videos`는 HTML 폼을 객체로 바인딩해 저장한 뒤 201과 생성 리소스를 JSON으로 반환한다.
+
+**요청 쪽 — ArgumentResolver가 컨트롤러 파라미터를 채운다**:
+- 핸들러의 파라미터는 스프링이 `HandlerMethodArgumentResolver`로 채워 넣는다. `@RequestParam`은 요청 파라미터에서 단건 값을 꺼내고, `@ModelAttribute`는 객체를 생성해 파라미터 이름과 일치하는 setter로 값을 바인딩한다.
+- 쿼리 스트링(`?keyword=spring`)과 폼 바디(`title=...&uploader=...`)는 형식이 같아서 스프링이 **동일한 '요청 파라미터'로 통합해 취급**한다 — 그래서 검색과 폼 등록이 같은 메커니즘으로 처리된다.
+- 애노테이션 생략 시 규칙: **단순 타입(String, int 등) → `@RequestParam`, 그 외 객체 타입 → `@ModelAttribute`**.
+- `@RequestParam`은 required 기본값이 true라 누락 시 스프링이 알아서 400을 만든다. 기본값은 null 분기가 아니라 `defaultValue = "10"`으로 선언한다 — 값이 항상 존재하게 되므로 primitive `int`로 받을 수 있다.
+
+**응답 쪽 — HttpMessageConverter가 반환값을 바디로 쓴다**:
+- `@RestController`(= `@Controller` + `@ResponseBody`)에서는 반환값이 뷰 이름으로 해석되지 않고, **`HttpMessageConverter`**가 HTTP 응답 바디에 직접 write한다. 객체·컬렉션은 `MappingJackson2HttpMessageConverter`가 JSON으로 직렬화한다 — `List<VideoResponse>`를 반환했을 뿐인데 JSON 배열이 도착하는 이유.
+- 상태 코드를 동적으로 정하려면 `ResponseEntity`를 쓴다. `ResponseEntity.created(uri)`는 201과 `Location` 헤더를 한 번에 실어주는 REST 정석 응답이다.
+
+**배움**: 스프링 MVC의 데이터 흐름은 대칭이다 — **들어오는 요청 → 파라미터는 ArgumentResolver가, 나가는 반환값 → 응답 바디는 HttpMessageConverter가 담당한다.** 프레임워크가 선언으로 제공하는 것(required, defaultValue, 객체 바인딩)을 코드 분기로 재발명하지 않는 것이 이 계층을 제대로 쓰는 법이다.
