@@ -84,7 +84,7 @@ class CounterThroughputComparisonTest {
     }
 
     private void runOnce(Counter counter, int threads, int perThread, long expected) throws Exception {
-        Concu햐rrentLoad.run(threads, perThread, counter::add);
+        ConcurrentLoad.run(threads, perThread, counter::add);
         assertThat(counter.get()).isEqualTo(expected);
     }
 }
