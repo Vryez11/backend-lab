@@ -4,6 +4,7 @@ import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 import java.sql.Connection;
 import java.sql.Statement;
@@ -11,7 +12,10 @@ import java.sql.Statement;
 @Configuration
 public class VideoViewLabConfig {
 
+    // lab11 이후 DataSource 빈이 여러 개가 되므로, 자동 구성 JdbcTemplate(lab06 등)이
+    // 기존처럼 이 풀에 바인딩되도록 대표 빈으로 지정한다.
     @Bean
+    @Primary
     public HikariDataSource videoViewDataSource() {
         HikariDataSource dataSource = new HikariDataSource();
         dataSource.setJdbcUrl("jdbc:h2:mem:videoview;DB_CLOSE_DELAY=-1");

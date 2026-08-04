@@ -1,0 +1,6 @@
+CREATE TABLE lab_video (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    view_count BIGINT NOT NULL DEFAULT 0,
+    duration_sec INT
+);
