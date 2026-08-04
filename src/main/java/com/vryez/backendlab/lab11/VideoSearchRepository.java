@@ -23,6 +23,9 @@ public class VideoSearchRepository {
     private static final String SEARCH_SQL =
             "SELECT id, title, view_count, duration_sec FROM lab_video WHERE title LIKE ? ORDER BY id";
 
+    private static final String COUNT_SQL =
+            "SELECT COUNT(*) FROM lab_video";
+
     public List<VideoDto> searchByKeyword(String keyword) {
         try(Connection con = dataSource.getConnection();
             PreparedStatement ps = con.prepareStatement(SEARCH_SQL)) {
@@ -41,12 +44,11 @@ public class VideoSearchRepository {
 
     public long count() {
         try(Connection con = dataSource.getConnection();
-            PreparedStatement ps = con.prepareStatement(SEARCH_SQL)) {
+            PreparedStatement ps = con.prepareStatement(COUNT_SQL)) {
 
             ResultSet rs = ps.executeQuery();
             rs.next();
             long c = rs.getLong(1);
-            con.close();
             return c;
         } catch (SQLException e) {
             throw new IllegalStateException(e);

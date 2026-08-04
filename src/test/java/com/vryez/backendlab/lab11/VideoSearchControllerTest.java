@@ -6,17 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.jdbc.datasource.init.DatabasePopulatorUtils;
-import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
+import java.sql.SQLTransientConnectionException;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.*;
 
 
 @SpringBootTest
@@ -49,5 +44,27 @@ class VideoSearchControllerTest {
         // 커넥션 풀 없음.
         assertThatThrownBy(() -> videoSearchController.count())
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void 문제_검색_2회면_풀이_고갈되고_무관한_count까지_1초_블로킹_후_죽는다() {
+
+        for (int i = 0; i < 2; i++) {
+
+            assertThatThrownBy(() -> videoSearchController.search("스프링"))
+                    .isInstanceOf(NullPointerException.class);
+        }
+
+        HikariDataSource hikariDataSource = (HikariDataSource) dataSource;
+        assertThat(hikariDataSource.getHikariPoolMXBean().getActiveConnections()).isEqualTo(2);
+
+        long start = System.nanoTime();
+        Throwable thrown = catchThrowable(() -> repository.count());
+        long end = (System.nanoTime() - start);
+
+        assertThat(end).isGreaterThan(900);
+        assertThat(thrown)
+                .isInstanceOf(IllegalStateException.class)
+                .hasCauseInstanceOf(SQLTransientConnectionException.class);
     }
 }
