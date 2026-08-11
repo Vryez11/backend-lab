@@ -8,8 +8,6 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class TimecodeWebConfig implements WebMvcConfigurer {
     @Override
     public void addFormatters(FormatterRegistry registry) {
-        // TODO: 직접 만든 StringToTimecodeConverter를 여기서 등록하라.
-
         registry.addConverter(new StringToTimecodeConverter());
     }
 }
