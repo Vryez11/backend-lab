@@ -55,6 +55,7 @@ docs/
 | lab15 | 몰릴수록 사라지는 조회수 — 동시 집계 유실(AtomicLong) | 변형복습 | 스프링 핵심원리 | [docs](docs/lab15-몰릴수록-사라지는-조회수-변형복습.md)      |
 | lab16 | 신고영상만 열면 사이트가 느려진다               | 변형복습 | 스프링 DB   | [docs](docs/lab16-신고영상만-열면-사이트가-느려진다-변형복습.md) |
 | lab17 | 로그인 안 했는데 남의 계정이 보인다 — ThreadLocal 신원 누수 | 디버깅  | 자바 동시성  | [docs](docs/lab17-로그인-안했는데-남의-계정이-보인다.md)      |
+| lab18 | 타임코드로 이어보기 — 문자열 파라미터를 도메인 타입으로 (커스텀 컨버터) | TDD  | 스프링 MVC  | [docs](docs/lab18-타임코드-이어보기.md)                |
 
 ---
 ### lab01 — 싱글톤 빈의 공유 상태로 인한 동시성 버그
@@ -157,3 +158,18 @@ docs/
 **배움**: ThreadLocal은 값이 스레드별로 격리돼 무상태 원칙(여러 스레드가 공유하는 가변 상태 금지)에 어긋나지 않지만, 스레드 풀 환경에서는 **요청 경계에서 remove해야 격리가 유지**된다. 정리는 값을 소비하는 곳이 아니라 **set한 계층이 같은 계층의 finally에서** 해야 한다 — 스프링의 `SecurityContextHolder`·`RequestContextHolder`가 정확히 이 패턴(필터에서 set, finally에서 clear)이다. 이 버그 클래스는 실무에서 "부하 시간대에 남의 개인정보가 보인다"는 최악의 보안 사고로 나타나며, 재현이 어려워 원인 파악에 오래 걸리는 유형이다.
 
 *덧붙임*: 채점 중 프로젝트 지뢰도 발견 — `@SpringBootTest`는 테스트 클래스패스까지 컴포넌트 스캔하므로 테스트 안의 `@RestController` 중첩 클래스는 이중 등록(Ambiguous mapping)되고, 테스트 컨텍스트가 2개 뜨면 공유 named H2(`mem:lab11`)에 schema.sql이 재실행돼 전체 테스트가 죽는다.
+
+---
+### lab18 — 타임코드로 이어보기: 커스텀 타입 컨버터 (TDD)
+
+**과제**: 실패하는 인수 테스트 6개를 받고, 이어보기 API `GET /lab18/resume?at=03:25`가 '분:초' 타임코드를 총 재생 초(`{"seconds":205}`)로 응답하게 만든다. 컨트롤러 시그니처는 `@RequestParam Timecode at`으로 고정 — 문자열로 받아 손으로 파싱하지 않고, `Converter<String, Timecode>`를 만들어 등록하는 것만이 정답 경로다. 잘못된 형식(`03:75`, `3:5`, `abc`)은 400.
+
+**변환 경로 — ArgumentResolver → ConversionService → 내 컨버터**:
+- `RequestParamMethodArgumentResolver`가 쿼리 스트링에서 문자열을 꺼내고, 목표 타입이 `Timecode`면 **`ConversionService`에 변환을 위임**한다. `WebMvcConfigurer.addFormatters`로 등록해 둔 내 컨버터가 여기서 호출된다 (부트에선 컨버터 빈을 `@Component`로 두면 자동 등록).
+- **적용 범위가 핵심 함정**: ConversionService가 쓰이는 곳은 `@RequestParam`·`@PathVariable`·`@ModelAttribute`·뷰 템플릿까지다. **`@RequestBody` JSON 바디는 `HttpMessageConverter`(Jackson) 담당이라 등록한 컨버터가 절대 적용되지 않는다.** JSON 쪽은 `@JsonCreator`나 커스텀 `JsonDeserializer`로 따로 가르쳐야 하며, 파싱 로직은 도메인의 `parse()` 한 곳에 두고 `Converter`와 `@JsonCreator`가 둘 다 그것을 호출하게 만드는 것이 정석이다.
+
+**400 vs 500 — 실패의 성격이 상태코드를 가른다**:
+- 컨버터가 변환을 **시도했다가** `IllegalArgumentException`을 던지면 `MethodArgumentTypeMismatchException`으로 감싸여 **400** — 클라이언트가 준 값이 잘못. JSON 경로에서 `@JsonCreator`가 던지면 `HttpMessageNotReadableException` → 역시 400으로, 규칙이 두 경로에 일관 적용된다.
+- 변환할 컨버터가 **애초에 등록돼 있지 않으면** `ConversionNotSupportedException` → **500** — 값과 무관한 서버 설정 문제. 스캐폴드 초기 상태에서 6개 테스트가 전부 500으로 RED였던 이유.
+
+**배움**: split 개수·자리수·숫자 여부·범위라는 검증 4단계는 정규식 `(\d+):([0-5]\d)` 하나로 접힌다 — `[0-5]\d`가 "정확히 2자리이면서 00~59"를 선언적으로 표현하므로 검증 순서 고민과 부호 입력(`+3:25`) 구멍이 함께 사라진다. `NumberFormatException`은 `IllegalArgumentException`의 자식이라 catch-후-재포장은 애초에 불필요했다. 요약하면: **시도하다 실패 = 클라이언트 잘못 = 400, 시도조차 불가 = 서버 설정 문제 = 500.**
