@@ -1,3 +1,5 @@
+DELETE FROM lab_video;
+ALTER TABLE lab_video ALTER COLUMN id RESTART WITH 1;
 INSERT INTO lab_video (title, view_count, duration_sec) VALUES
  ('스프링 입문 1강 - IoC와 DI', 1500, 620),
  ('스프링 입문 2강 - 빈 스코프', 1200, 540),
