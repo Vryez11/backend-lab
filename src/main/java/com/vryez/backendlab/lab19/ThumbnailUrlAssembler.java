@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ThumbnailUrlAssembler {
 
-    @Value("${app.cdn-base-urlㅂ}")
+    @Value("${app.cdn-base-url}")
     private String cdnBaseUrl;
 
     private String prefix;
