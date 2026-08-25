@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-@RestController
+@RestController("lab24CommentController")
 @RequestMapping("/lab24/videos/{videoId}/comments")
 public class CommentController {
 

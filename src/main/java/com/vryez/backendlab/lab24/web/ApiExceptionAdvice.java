@@ -1,7 +1,9 @@
 package com.vryez.backendlab.lab24.web;
 
+import com.vryez.backendlab.lab23.exception.ExceptionResponse;
 import com.vryez.backendlab.lab24.exception.CommentsDisabledException;
 import com.vryez.backendlab.lab24.exception.VideoNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
@@ -13,7 +15,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import java.util.List;
 
-@RestControllerAdvice
+@Slf4j
+@RestControllerAdvice(basePackages = "com.vryez.backendlab.lab24")
 public class ApiExceptionAdvice {
 
     @ExceptionHandler(CommentsDisabledException.class)
@@ -23,6 +26,7 @@ public class ApiExceptionAdvice {
         return ErrorResponse.builder()
                 .code("COMMENTS_DISABLED")
                 .message(e.getMessage())
+                .errors(List.of())
                 .build();
     }
 
@@ -33,6 +37,7 @@ public class ApiExceptionAdvice {
         return ErrorResponse.builder()
                 .code("VIDEO_NOT_FOUND")
                 .message(e.getMessage())
+                .errors(List.of())
                 .build();
     }
 
@@ -43,6 +48,7 @@ public class ApiExceptionAdvice {
         return ErrorResponse.builder()
                 .code("MALFORMED_JSON")
                 .message(e.getMessage())
+                .errors(List.of())
                 .build();
     }
 
@@ -53,6 +59,7 @@ public class ApiExceptionAdvice {
         return ErrorResponse.builder()
                 .code("TYPE_MISMATCH")
                 .message(e.getMessage())
+                .errors(List.of())
                 .build();
     }
 
@@ -72,4 +79,17 @@ public class ApiExceptionAdvice {
                 .errors(errors)
                 .build();
     }
+
+    @ExceptionHandler(Exception.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ErrorResponse unexpected(Exception e) {
+        log.error("unexpected error", e);
+
+        return ErrorResponse.builder()
+                .code("INTERNAL_ERROR")
+                .message("서버 오류가 발생했습니다")
+                .errors(List.of())
+                .build();
+    }
 }
+

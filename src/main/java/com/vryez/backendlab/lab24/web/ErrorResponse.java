@@ -26,6 +26,7 @@ public class ErrorResponse {
         this(code, message, List.of());
     }
 
+    @Data
     @RequiredArgsConstructor
     static class ErrorField{
 
