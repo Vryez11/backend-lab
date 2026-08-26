@@ -16,13 +16,13 @@ public class VideoAdminService {
     private final JdbcTemplate jdbcTemplate;
 
     // 신고 누적 영상 일괄 비공개. 운영 규칙: 하나라도 실패하면 전체 취소되어야 한다.
+    @Transactional(rollbackFor = {ModerationException.class})
     public void hideReportedVideos(List<Long> videoIds) throws ModerationException {
         for (Long id : videoIds) {
             hideOne(id);
         }
     }
 
-    @Transactional(rollbackFor = {ModerationException.class})
     public void hideOne(Long videoId) throws ModerationException {
         String status = jdbcTemplate.queryForObject(
                 "select status from videos where id = ?", String.class, videoId);
