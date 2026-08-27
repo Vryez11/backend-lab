@@ -10,9 +10,6 @@ public class VideoUploadService {
 
     private final JdbcTemplate jdbc;
 
-    private String currentTitle;
-    private Long currentUploaderId;
-
     public VideoUploadService(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
@@ -29,9 +26,6 @@ public class VideoUploadService {
         }, keyHolder);
         long videoId = keyHolder.getKey().longValue();
 
-        this.currentTitle = req.title();
-        this.currentUploaderId = req.uploaderId();
-
         // 후처리(썸네일 추출·트랜스코딩 큐 등록) 대기 시뮬레이션
         try {
             Thread.sleep(30);
@@ -39,6 +33,6 @@ public class VideoUploadService {
             Thread.currentThread().interrupt();
         }
 
-        return new UploadResponse(videoId, this.currentTitle, this.currentUploaderId);
+        return new UploadResponse(videoId, req.title(), req.uploaderId());
     }
 }
