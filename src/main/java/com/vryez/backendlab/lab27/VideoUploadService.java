@@ -1,30 +1,26 @@
 package com.vryez.backendlab.lab27;
 
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Service("lab27VideoUploadService")
 @RequiredArgsConstructor
 public class VideoUploadService {
 
     private final VideoRepository videoRepository;
     private final VideoStatRepository videoStatRepository;
-    private final AuditLogService auditLogService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public long upload(VideoUploadRequest req) {
         long videoId = videoRepository.save(req.getTitle(), req.getUploaderId());
         videoStatRepository.init(videoId);
 
-        // 요구사항 변경(이번 스프린트): 감사 로그 적재가 실패해도 업로드는 성공해야 한다.
-        try {
-            auditLogService.record(videoId, req.getUploaderId(), req.getTitle());
-        } catch (Exception e) {
-            log.warn("감사 적재 건너뜀 videoId={} 이유={}", videoId, e.toString());
-        }
+        // 감사 적재는 커밋 이후로 분리(AFTER_COMMIT 리스너).
+        // 트랜잭션이 롤백되면 이벤트는 소비되지 않으므로 헛 감사 로그도 남지 않는다.
+        eventPublisher.publishEvent(new VideoUploadedEvent(videoId, req.getUploaderId(), req.getTitle()));
 
         return videoId;
     }

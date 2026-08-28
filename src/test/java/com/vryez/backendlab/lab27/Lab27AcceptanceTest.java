@@ -42,6 +42,8 @@ class Lab27AcceptanceTest {
 
         assertThat(videoCountOf(videoId)).isEqualTo(1);
         assertThat(statCountOf(videoId)).isEqualTo(1);
+        // 감사 적재는 커밋 이후 비동기 — 잠시 대기 후 단언한다.
+        awaitUntil(() -> auditCount() == 1);
         assertThat(auditCount()).isEqualTo(1);
     }
 
@@ -54,8 +56,11 @@ class Lab27AcceptanceTest {
                 "select title from lab27_video where id = ?", String.class, videoId);
         assertThat(savedTitle).isEqualTo(LONG_TITLE);
         assertThat(statCountOf(videoId)).isEqualTo(1);
-        assertThat(auditCount()).isZero();
+        // 비동기 감사가 "시도 후 실패"까지 간 것을 로그로 확인한 뒤에 0건을 단언한다
+        // (리스너가 아직 실행 전이라 우연히 0건인 것과 구별하기 위함).
+        awaitUntil(() -> (output.getOut() + output.getErr()).contains("감사 적재 건너뜀"));
         assertThat(output.getOut() + output.getErr()).contains("감사 적재 건너뜀");
+        assertThat(auditCount()).isZero();
     }
 
     @Test
@@ -85,6 +90,18 @@ class Lab27AcceptanceTest {
         assertThat(videoTotal).isZero();
         assertThat(statTotal).isZero();
         assertThat(auditCount()).isZero();
+    }
+
+    private void awaitUntil(java.util.function.BooleanSupplier condition) {
+        long deadline = System.currentTimeMillis() + 3000;
+        while (System.currentTimeMillis() < deadline && !condition.getAsBoolean()) {
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+        }
     }
 
     private VideoUploadRequest request(String title, String uploaderId) {
