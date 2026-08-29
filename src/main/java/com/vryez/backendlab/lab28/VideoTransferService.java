@@ -12,6 +12,7 @@ public class VideoTransferService {
 
     private final VideoTransferRepository repository;
 
+    @Transactional(rollbackFor = LockedVideoException.class)
     public void transferAll(long fromChannelId, long toChannelId, List<Long> videoIds)
             throws LockedVideoException {
         for (Long videoId : videoIds) {
@@ -19,7 +20,6 @@ public class VideoTransferService {
         }
     }
 
-    @Transactional(rollbackFor = LockedVideoException.class)
     public void transferOne(long videoId, long fromChannelId, long toChannelId)
             throws LockedVideoException {
         String status = repository.findStatus(videoId);
